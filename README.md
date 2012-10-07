@@ -1,5 +1,7 @@
    JCRICKET                         
 
+DISCLAIMER:
+At the moment the code is not provided as a library project. In the future I _promise_ that I will pack it properly. By now it's just a little digression of a class I used in the app I am currently working on. 
 
 JCricket is a simple android library to show popup hints related to existing views.
 
