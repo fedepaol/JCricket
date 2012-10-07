@@ -1,6 +1,4 @@
-***************************************
-*   JCRICKET                          +
-***************************************
+   JCRICKET                         
 
 
 JCricket is a simple android library to show popup hints related to existing views.
@@ -13,7 +11,7 @@ If you want to access the elements of the view, just get the view using getPopup
 
 By default the hint is dismissed whenever it's tapped
 
-
+--------------
 
 
 
