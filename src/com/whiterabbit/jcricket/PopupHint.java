@@ -40,6 +40,8 @@ public class PopupHint {
         }
         mLocation = builder.location;
         mOffset = builder.offset;
+        mContext = builder.context;
+        generateWindow();
     }
 
 
@@ -51,6 +53,11 @@ public class PopupHint {
         private boolean wrap = true;
         private PopupLocation location = PopupLocation.CENTER;
         private int offset = 0;
+        private Activity context;
+
+        public PopupBuilder(Activity context){
+            this.context = context;
+        }
 
         public PopupBuilder location(PopupLocation location, int offset){
             this.location = location;
