@@ -16,6 +16,9 @@ public class PopupHint {
     public enum PopupLocation {
         CENTER, TOP_LEFT, TOP_RIGHT, BOTTOM_LEFT, BOTTOM_RIGHT, BOTTOM_CENTER
     }
+    public enum PopupCorner{
+        TOP_LEFT, TOP_RIGHT, BOTTOM_LEFT, BOTTOM_RIGHT
+    }
     private Activity mContext;
 
     private int mLayout;
@@ -23,9 +26,11 @@ public class PopupHint {
     private int mHeight;
     private boolean mMustWrap;
     private PopupLocation mLocation;
+    private PopupCorner mPopupCorner;
     private int mOffset;
     private View mPopupLayout;
     private PopupWindow mWindow;
+    private PopupWindow.OnDismissListener mDismissListener;
 
     /**
      * Constructor (using builder pattern)
@@ -40,7 +45,9 @@ public class PopupHint {
         }
         mLocation = builder.location;
         mOffset = builder.offset;
+        mPopupCorner = builder.corner;
         mContext = builder.context;
+        mDismissListener = builder.listener;
         generateWindow();
     }
 
@@ -52,15 +59,18 @@ public class PopupHint {
         private int height;
         private boolean wrap = true;
         private PopupLocation location = PopupLocation.CENTER;
+        private PopupCorner corner = PopupCorner.TOP_LEFT;
         private int offset = 0;
         private Activity context;
+        private PopupWindow.OnDismissListener listener;
 
         public PopupBuilder(Activity context){
             this.context = context;
         }
 
-        public PopupBuilder location(PopupLocation location, int offset){
+        public PopupBuilder location(PopupLocation location, PopupCorner corner, int offset){
             this.location = location;
+            this.corner = corner;
             this.offset = offset;
             return this;
         }
@@ -74,6 +84,12 @@ public class PopupHint {
             this.wrap = false;
             this.width = width;
             this.height = height;
+            return this;
+        }
+
+
+        public PopupBuilder dismiss(PopupWindow.OnDismissListener l){
+            this.listener = l;
             return this;
         }
 
@@ -104,13 +120,14 @@ public class PopupHint {
 
         mWindow.setFocusable(true);
         mWindow.setBackgroundDrawable(new BitmapDrawable(mContext.getResources()));
-
-
+        if(mDismissListener != null){
+            mWindow.setOnDismissListener(mDismissListener);
+        }
     }
 
 
     /**
-     * assuming that the view has been correctly displayed,
+     * assuming that the view has been correctly displayed, shows the hint
      * @param v
      * @param x
      * @param y
@@ -125,49 +142,79 @@ public class PopupHint {
             }
         });
 
+        mPopupLayout.measure(View.MeasureSpec.UNSPECIFIED, View.MeasureSpec.UNSPECIFIED);
+        final int[] newCoords = adjustLocationByCorner(x, y);
+        mWindow.update(newCoords[0], newCoords[1], mWindow.getWidth(), mWindow.getHeight());
+
+
 
     }
 
     /**
      * Returns the coordinates to place the popup into related to a given view
      * @param v the view to place the hit near to
-     * @param location how to place the hint related to the given view
      * @return a 2 element array with x,y coordinates
      */
-    private int[] getPopupLocation(final View v, PopupLocation location){
+    private int[] getPopupLocation(final View v){
         int[] viewLocation = new int[2];
         v.getLocationOnScreen(viewLocation);
-        final int hintX;
-        final int hintY;
-        switch (location){
+        int hintX;
+        int hintY;
+        switch (mLocation){
             case TOP_LEFT:
-                hintX = viewLocation[0] + mOffset;
-                hintY = viewLocation[1] + mOffset;
+                hintX = viewLocation[0];
+                hintY = viewLocation[1];
                 break;
             case TOP_RIGHT:
-                hintX = viewLocation[0] + mOffset + v.getWidth();
-                hintY = viewLocation[1] + mOffset;
+                hintX = viewLocation[0] + v.getWidth();
+                hintY = viewLocation[1];
                 break;
             case BOTTOM_LEFT:
-                hintX = viewLocation[0] + mOffset;
-                hintY = viewLocation[1] + mOffset + v.getHeight();
+                hintX = viewLocation[0];
+                hintY = viewLocation[1] + v.getHeight();
                 break;
             case BOTTOM_RIGHT:
-                hintX = viewLocation[0] + mOffset + v.getWidth();
-                hintY = viewLocation[1] + mOffset + v.getHeight();
+                hintX = viewLocation[0] + v.getWidth();
+                hintY = viewLocation[1] + v.getHeight();
                 break;
             case CENTER:
-                hintX = viewLocation[0] + v.getWidth() / 2 + mOffset;
-                hintY = viewLocation[1] + v.getHeight() / 2 + mOffset;
+                hintX = viewLocation[0] + v.getWidth() / 2;
+                hintY = viewLocation[1] + v.getHeight() / 2;
                 break;
             case BOTTOM_CENTER:
-                hintX = viewLocation[0] + v.getWidth() / 2 + mOffset;
-                hintY = viewLocation[1] + v.getHeight() + mOffset;
+                hintX = viewLocation[0] + v.getWidth() / 2;
+                hintY = viewLocation[1] + v.getHeight();
             break;
             default:
                 hintX = hintY = 0;
         }
+
+        adjustLocationByCorner(hintX, hintY);
+
+        hintX = hintX + mOffset;
+        hintY = hintY + mOffset;
         int[] res = {hintX, hintY};
+        return res;
+    }
+
+
+    private int[] adjustLocationByCorner(int x, int y){
+       switch(mPopupCorner){
+            case TOP_LEFT:
+                // already in place
+            break;
+            case TOP_RIGHT:
+                x = x - mPopupLayout.getMeasuredWidth();
+            break;
+            case BOTTOM_LEFT:
+                y = y - mPopupLayout.getMeasuredHeight();
+            break;
+            case BOTTOM_RIGHT:
+                x = x - mPopupLayout.getMeasuredWidth();
+                y = y - mPopupLayout.getMeasuredHeight();
+            break;
+        }
+        int[] res = {x, y};
         return res;
     }
 
@@ -180,7 +227,7 @@ public class PopupHint {
         v.post(new Runnable() { // this because all lifecycle events must be finished
             @Override
             public void run() {
-                int[] coords = getPopupLocation(v, mLocation);
+                int[] coords = getPopupLocation(v);
                 displayHint(v, coords[0], coords[1]);
             }
         });
@@ -194,6 +241,16 @@ public class PopupHint {
      */
     public View getPopupView(){
         return mPopupLayout;
+    }
+
+    /**
+     * returns a direct subview of the hint layout
+     * its a shortcut for setting strings without using getPopupView()
+     * @param id
+     * @return the view with the given id
+     */
+    public View getHintSubview(int id){
+        return mPopupLayout.findViewById(id);
     }
 
 }
