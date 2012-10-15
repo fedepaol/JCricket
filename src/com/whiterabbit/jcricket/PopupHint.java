@@ -19,7 +19,7 @@ public class PopupHint {
     public enum PopupCorner{
         TOP_LEFT, TOP_RIGHT, BOTTOM_LEFT, BOTTOM_RIGHT
     }
-    private Activity mContext;
+    protected Activity mContext;
 
     private int mLayout;
     private int mWidth;
@@ -27,16 +27,18 @@ public class PopupHint {
     private boolean mMustWrap;
     private PopupLocation mLocation;
     private PopupCorner mPopupCorner;
-    private int mOffset;
+    private int mHorizontalOffset = 0;
+    private int mVerticalOffset = 0;
     private View mPopupLayout;
     private PopupWindow mWindow;
     private PopupWindow.OnDismissListener mDismissListener;
+    private float mDensityFactor;
 
     /**
      * Constructor (using builder pattern)
      * @param builder
      */
-    private PopupHint(PopupBuilder builder){
+    protected PopupHint(PopupBuilder builder){
         mLayout = builder.hintLayout;
         mMustWrap = builder.wrap;
         if(!mMustWrap){
@@ -44,10 +46,13 @@ public class PopupHint {
             mHeight = builder.height;
         }
         mLocation = builder.location;
-        mOffset = builder.offset;
+        mHorizontalOffset = builder.horizontalOffset;
+        mVerticalOffset = builder.verticalOffset;
         mPopupCorner = builder.corner;
         mContext = builder.context;
         mDismissListener = builder.listener;
+
+        mDensityFactor = mContext.getResources().getDisplayMetrics().density;
         generateWindow();
     }
 
@@ -60,7 +65,8 @@ public class PopupHint {
         private boolean wrap = true;
         private PopupLocation location = PopupLocation.CENTER;
         private PopupCorner corner = PopupCorner.TOP_LEFT;
-        private int offset = 0;
+        private int horizontalOffset = 0;
+        private int verticalOffset = 0;
         private Activity context;
         private PopupWindow.OnDismissListener listener;
 
@@ -68,18 +74,47 @@ public class PopupHint {
             this.context = context;
         }
 
-        public PopupBuilder location(PopupLocation location, PopupCorner corner, int offset){
+        /**
+         * Chooses the location of the hint
+         * @param location  location type (related to the target view)
+         * @param corner corner of the hint to be placed in location
+         * @return
+         */
+        public PopupBuilder location(PopupLocation location, PopupCorner corner){
             this.location = location;
             this.corner = corner;
-            this.offset = offset;
             return this;
         }
 
+        /**
+         * Sets the horizontal and vertical offsets (in dpi) to be used
+         * to move the hint from the original location
+         * @param horizontal
+         * @param vertical
+         * @return
+         */
+        public PopupBuilder offset(int horizontal, int vertical){
+            this.horizontalOffset = horizontal;
+            this.verticalOffset = vertical;
+            return this;
+        }
+
+        /**
+         * Sets the layout to be used to display the hint
+         * @param layout
+         * @return
+         */
         public PopupBuilder layout(int layout){
             hintLayout = layout;
             return this;
         }
 
+        /**
+         * Sets the hint with fixed widht and height (in dpi)
+         * @param width
+         * @param height
+         * @return
+         */
         public PopupBuilder size(int width, int height){
             this.wrap = false;
             this.width = width;
@@ -88,6 +123,11 @@ public class PopupHint {
         }
 
 
+        /**
+         * Sets the onDismissListener
+         * @param l
+         * @return
+         */
         public PopupBuilder dismiss(PopupWindow.OnDismissListener l){
             this.listener = l;
             return this;
@@ -112,17 +152,26 @@ public class PopupHint {
         if(mMustWrap){
             mWindow.setWindowLayoutMode(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
         }else{
-            int popupWidth = (int) (mWidth * mContext.getResources().getDisplayMetrics().density);
-            int popupHeight = (int) (mHeight * mContext.getResources().getDisplayMetrics().density);
+            int popupWidth = (int) (mWidth * mDensityFactor);
+            int popupHeight = (int) (mHeight * mDensityFactor);
             mWindow.setWidth(popupWidth);
             mWindow.setHeight(popupHeight);
         }
 
-        mWindow.setFocusable(true);
+        mWindow.setTouchable(true);
+        mWindow.setOutsideTouchable(false);
         mWindow.setBackgroundDrawable(new BitmapDrawable(mContext.getResources()));
         if(mDismissListener != null){
             mWindow.setOnDismissListener(mDismissListener);
         }
+        mPopupLayout.setOnTouchListener(new View.OnTouchListener() {
+            @Override
+            public boolean onTouch(View v, MotionEvent event) {
+                mWindow.dismiss();
+                return true;
+            }
+        });
+
     }
 
 
@@ -134,19 +183,10 @@ public class PopupHint {
      */
     private void displayHint(final View v, final int x, final int y) {
         mWindow.showAtLocation(mPopupLayout, Gravity.NO_GRAVITY, x, y);
-        mWindow.setTouchInterceptor(new View.OnTouchListener() {
-            @Override
-            public boolean onTouch(View v, MotionEvent event) {
-                mWindow.dismiss();
-                return true;
-            }
-        });
 
         mPopupLayout.measure(View.MeasureSpec.UNSPECIFIED, View.MeasureSpec.UNSPECIFIED);
         final int[] newCoords = adjustLocationByCorner(x, y);
         mWindow.update(newCoords[0], newCoords[1], mWindow.getWidth(), mWindow.getHeight());
-
-
 
     }
 
@@ -191,8 +231,8 @@ public class PopupHint {
 
         adjustLocationByCorner(hintX, hintY);
 
-        hintX = hintX + mOffset;
-        hintY = hintY + mOffset;
+        hintX = hintX + (int)(mHorizontalOffset * mDensityFactor);
+        hintY = hintY + (int)(mVerticalOffset * mDensityFactor);
         int[] res = {hintX, hintY};
         return res;
     }
