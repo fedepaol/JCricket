@@ -10,19 +10,18 @@ Usage
 
 The usage is quite simple and relies on builder pattern.
 
-<code>
+```java
 PopupHint.PopupBuilder b = new PopupHint.PopupBuilder(this);
 mHint = b.layout(R.layout.baloon).location(PopupLocation.TOP_LEFT, PopupCorner.BOTTOM_RIGHT).build();
-
 mHint.showHint(targetView);
-</code>
+```
 
 The location of the popup is expressed in terms of position related to the targetview:
 
 ----
 
 
-![alt text](https://raw.github.com/fedepaol/JCricket/master/pics/Baloon_Position.png "Logo Title Text 21")
+![alt text](https://raw.github.com/fedepaol/JCricket/master/pics/Baloon_position.png "Logo Title Text 21")
 
 
 ----
